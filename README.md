@@ -41,7 +41,3 @@ Todo o código foi programado utilizando o Code::Blocks 17.12 junto a biblioteca
 * Feito os passo acima, basta compilar o código e o jogo deve funcionar.
 
 
-## Autores
-
-| [<img src="https://user-images.githubusercontent.com/82522876/157162243-8977b1e9-555d-4a7b-b321-5bc2afcb05bb.jpg" width=115><br><sub>Aline Rabelo</sub>](https://www.instagram.com/al.rabelo/) |  [<img src="https://user-images.githubusercontent.com/82522876/157162841-21de3b0f-f7bb-4199-8239-850a437b5659.jpeg" width=115><br><sub>Emilly Raiane</sub>](https://github.com/Raiagues)|
-| :---: | :---: |
