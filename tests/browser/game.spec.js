@@ -39,7 +39,7 @@ test('play, capture, pass, restart, keyboard, and mobile layout', async ({ page,
   await page.getByRole('button', { name: 'Keep playing' }).click();
   await expect(page.locator('#pink-count')).toHaveText('11');
   await page.locator('#new-game').click();
-  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  await page.locator('#restart-dialog').getByRole('button', { name: 'New game', exact: true }).click();
   await expect(page.locator('#turn')).toHaveText("Blue's turn");
   await expect(page.locator('#pink-count')).toHaveText('12');
   await expect(page.locator('.cell.selected')).toHaveCount(0);
