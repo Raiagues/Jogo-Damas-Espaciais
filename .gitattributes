@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.png binary
+*.wav binary
+# Preserve the original submission byte-for-byte, including its CRLF whitespace.
+legacy/main.c -text -whitespace
+legacy/*.cbp -text

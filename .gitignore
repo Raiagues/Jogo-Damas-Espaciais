@@ -1,0 +1,11 @@
+/build*/
+/bin/
+/obj/
+*.o
+*.exe
+*.dll
+*.depend
+*.layout
+Thumbs.db
+desktop.ini
+.DS_Store
