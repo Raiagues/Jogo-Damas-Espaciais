@@ -4,8 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+static unsigned int checks;
+
 /* Keep checks enabled in Release builds (unlike assert with NDEBUG). */
 #define CHECK(condition) do { \
+    ++checks; \
     if (!(condition)) { \
         fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); \
         exit(EXIT_FAILURE); \
@@ -152,6 +155,6 @@ int main(void)
     test_invalid_moves_are_atomic();
     test_blocked_player_and_king_capture();
     test_every_square_and_direction();
-    puts("All game rule tests passed.");
+    printf("All game rule tests passed: %u checks; 3,200 square/direction cases.\n", checks);
     return 0;
 }

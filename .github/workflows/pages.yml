@@ -1,0 +1,64 @@
+name: Browser game and GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install compiler and test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify original submission
+        run: sha256sum -c legacy/SHA256SUMS
+      - name: Build shared C engine and static site
+        run: python3 scripts/build_web.py
+      - name: Test WebAssembly and memory bounds
+        run: npm run test:wasm
+      - name: Test desktop and touch browser interactions
+        run: npm run test:web
+      - name: Keep failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/
+      - name: Package site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build-web
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: web
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

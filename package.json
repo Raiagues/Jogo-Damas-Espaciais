@@ -1,0 +1,12 @@
+{
+  "name": "damas-espaciais-browser-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:wasm": "node tests/test_web_engine.mjs",
+    "test:web": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}

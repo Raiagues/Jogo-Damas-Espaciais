@@ -1,7 +1,9 @@
 #include "game.h"
 
-#include <stdlib.h>
-#include <string.h>
+static int magnitude(int value)
+{
+    return value < 0 ? -value : value;
+}
 
 bool game_inside(int row, int col)
 {
@@ -17,10 +19,10 @@ int game_owner(int piece)
 
 void game_reset(Game *game)
 {
-    memset(game, 0, sizeof(*game));
     game->turn = BLUE;
     for (int row = 0; row < 8; ++row) {
         for (int col = 0; col < 8; ++col) {
+            game->board[row][col] = EMPTY;
             if ((row + col) % 2 == 1) {
                 if (row < 3) game->board[row][col] = BLUE;
                 if (row > 4) game->board[row][col] = PINK;
@@ -39,44 +41,47 @@ int game_count(const Game *game, int player)
 }
 
 /* Resolve the original click-on-opponent control before validating a move. */
-static void landing(const Game *game, int row, int col, int *to_row, int *to_col)
+static void landing(const Game *game, int player, int row, int col, int *to_row, int *to_col)
 {
     if (game_inside(*to_row, *to_col) &&
-        abs(*to_row - row) == 1 && abs(*to_col - col) == 1 &&
-        game_owner(game->board[*to_row][*to_col]) == 3 - game->turn) {
+        magnitude(*to_row - row) == 1 && magnitude(*to_col - col) == 1 &&
+        game_owner(game->board[*to_row][*to_col]) == 3 - player) {
         *to_row += *to_row - row;
         *to_col += *to_col - col;
     }
 }
 
-bool game_can_move(const Game *game, int row, int col, int to_row, int to_col)
+static bool can_move_for(const Game *game, int player, int row, int col, int to_row, int to_col)
 {
     if (!game_inside(row, col) || !game_inside(to_row, to_col)) return false;
     const int piece = game->board[row][col];
-    if (game_owner(piece) != game->turn) return false;
-    landing(game, row, col, &to_row, &to_col);
+    if (game_owner(piece) != player) return false;
+    landing(game, player, row, col, &to_row, &to_col);
     if (!game_inside(to_row, to_col) || game->board[to_row][to_col] != EMPTY)
         return false;
     const int dr = to_row - row;
     const int dc = to_col - col;
-    if (abs(dr) != abs(dc) || abs(dr) < 1 || abs(dr) > 2) return false;
+    if (magnitude(dr) != magnitude(dc) || magnitude(dr) < 1 || magnitude(dr) > 2) return false;
     if ((piece == BLUE && dr < 0) || (piece == PINK && dr > 0)) return false;
-    if (abs(dr) == 2 &&
-        game_owner(game->board[row + dr / 2][col + dc / 2]) != 3 - game->turn)
+    if (magnitude(dr) == 2 &&
+        game_owner(game->board[row + dr / 2][col + dc / 2]) != 3 - player)
         return false;
     return true;
 }
 
+bool game_can_move(const Game *game, int row, int col, int to_row, int to_col)
+{
+    return can_move_for(game, game->turn, row, col, to_row, to_col);
+}
+
 bool game_has_moves(const Game *game, int player)
 {
-    Game position = *game;
-    position.turn = player;
     for (int row = 0; row < 8; ++row) {
         for (int col = 0; col < 8; ++col) {
-            if (game_owner(position.board[row][col]) != player) continue;
+            if (game_owner(game->board[row][col]) != player) continue;
             for (int dr = -2; dr <= 2; ++dr)
                 for (int dc = -2; dc <= 2; ++dc)
-                    if (game_can_move(&position, row, col, row + dr, col + dc))
+                    if (can_move_for(game, player, row, col, row + dr, col + dc))
                         return true;
         }
     }
@@ -92,9 +97,9 @@ bool game_move(Game *game, int row, int col, int to_row, int to_col)
         return true;
     }
     if (!game_can_move(game, row, col, to_row, to_col)) return false;
-    landing(game, row, col, &to_row, &to_col);
+    landing(game, game->turn, row, col, &to_row, &to_col);
     int piece = game->board[row][col];
-    if (abs(to_row - row) == 2)
+    if (magnitude(to_row - row) == 2)
         game->board[(row + to_row) / 2][(col + to_col) / 2] = EMPTY;
     game->board[row][col] = EMPTY;
     if (piece == BLUE && to_row == 7) piece = BLUE_KING;

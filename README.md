@@ -1,16 +1,48 @@
 # Damas Espaciais · Space Checkers
 
 [![Build and test](https://github.com/Raiagues/Jogo-Damas-Espaciais/actions/workflows/build.yml/badge.svg)](https://github.com/Raiagues/Jogo-Damas-Espaciais/actions/workflows/build.yml)
+[![Play in your browser](https://img.shields.io/badge/Play-online-a98ae6)](https://raiagues.github.io/Jogo-Damas-Espaciais/)
 ![Language: C99](https://img.shields.io/badge/language-C99-blue)
 ![Graphics: Allegro 5](https://img.shields.io/badge/graphics-Allegro%205-purple)
 
 A space-themed, local two-player checkers game written in **C with Allegro 5**. Originally developed as the final project for the **Algorithms and Programming** course in Aerospace Engineering at the **Federal University of Santa Maria (UFSM), Brazil**.
 
-The project uses an 8 × 8 matrix to represent the board and validate moves. This repository includes the source code, original artwork and audio, a CMake build, and automated tests. The documentation is in English; text embedded in the original game artwork remains in Portuguese.
+**[Play in your browser →](https://raiagues.github.io/Jogo-Damas-Espaciais/)** · [Original submission](legacy/) · [What changed](docs/MODERNIZATION.md) · [Technical evidence](docs/TECHNICAL_EVIDENCE.md)
+
+The original course submission is preserved unchanged in **`legacy/`**. Later updates make the project easier to build on current systems, fix gameplay errors, and add an installation-free browser edition. The space theme, original artwork and sounds, two-player format, and 8 × 8 matrix remain central to the game.
+
+The maintained desktop and browser editions share **the same C rule engine**. Allegro provides the desktop interface; the website calls that engine through WebAssembly. The documentation and web interface are in English; text embedded in the original desktop artwork remains in Portuguese.
 
 <p align="center">
-  <img src="docs/gameplay.png" alt="Space Checkers: blue and pink pieces on a starry checkerboard" width="520">
+  <a href="https://raiagues.github.io/Jogo-Damas-Espaciais/"><img src="docs/browser-gameplay.png" alt="Space Checkers browser edition with the original board and a live turn and piece-count panel" width="900"></a>
 </p>
+
+## Play online
+
+Open **[Damas Espaciais on GitHub Pages](https://raiagues.github.io/Jogo-Damas-Espaciais/)**. Two people play on the same device. Select a piece and its destination by click or tap; arrow keys and Enter/Space also work. Sound is off until enabled, so the original soundtrack is not downloaded during initial loading.
+
+A current browser with JavaScript and WebAssembly is required. No account or local Allegro installation is needed. Chromium desktop and touch emulation are tested; universal device compatibility is not assumed. [See the support scope](docs/MODERNIZATION.md#compatibility-with-a-concrete-scope).
+
+## Engineering highlights
+
+**C99 · Allegro 5 · WebAssembly · matrices · input validation · memory safety · resource management · CMake · automated testing · GitHub Actions · GitHub Pages**
+
+| Evidence | Result and scope |
+| --- | --- |
+| Native rule validation | **5,446 checks**, including **3,200 square/direction cases**, with AddressSanitizer and UndefinedBehaviorSanitizer checks on Linux |
+| Compact board state | **260 bytes** for `Game` on wasm32: 64 integers and the current turn |
+| Standalone browser engine | **2,258-byte Wasm module** in the recorded Clang 18 build; zero imports and **128 KiB fixed linear memory** |
+| Shared implementation | One C rules engine used by the Allegro desktop application and browser UI |
+| Reproducible checks | Windows/Linux builds, a Linux GUI smoke test, seeded Wasm simulations, and desktop/touch browser matches |
+| Original work preserved | Byte-for-byte source preservation with SHA-256 verification in CI |
+
+The rule engine uses fixed-size state and no heap allocation. Allegro and browsers manage graphics/audio allocations separately; the figures above **are not total application memory usage**. [Technical evidence](docs/TECHNICAL_EVIDENCE.md) explains measurements, limitations, and commands to reproduce them.
+
+## Original work and later updates
+
+`legacy/` contains the code submitted for the course. `src/` contains the maintained implementation; `web/` adds the browser interface. The update is focused on compatibility, correcting defects, and making the game accessible to visitors. It also reorganizes the implementation and clarifies a few gameplay behaviors, including one capture per turn.
+
+Read the **[before-and-after comparison](docs/MODERNIZATION.md)** for exactly what was preserved and changed. The [desktop screenshot](docs/gameplay.png) shows the maintained Allegro edition with the original artwork.
 
 ## Download
 
@@ -109,12 +141,15 @@ This is an educational checkers variant. It does not implement tournament rules,
 ```text
 src/
   main.c              Allegro window, menus, input, rendering, and audio
-  game.c / game.h      Board state, moves, captures, promotion, and victory
+  game.c / game.h      Shared board state and game rules
+  web.c                Small bridge from JavaScript to the C engine
+web/                  Responsive browser interface (HTML, CSS, JavaScript)
+scripts/build_web.py  Compile C to Wasm and package the static site
 imagens/              Original PNG artwork
 sons/                 Original WAV audio
 legacy/               Unmodified source and Code::Blocks project from the ZIP
-tests/                Rule tests and Linux desktop smoke test
-docs/                 Development notes and gameplay screenshot
+tests/                Native, Wasm, desktop GUI, and browser tests
+docs/                 Modernization history, technical evidence, and development notes
 CMakeLists.txt        Portable build and test configuration
 LICENSE               GNU GPL v3 text supplied with the original project
 ```
@@ -127,7 +162,7 @@ After building, run:
 ctest --test-dir build --output-on-failure
 ```
 
-The tests cover turns, invalid moves, captures, promotion, king counts, blocked players, restart, and board boundaries. GitHub Actions builds and tests on Linux and Windows; Linux also runs an automated desktop interaction test with memory checks.
+The tests cover turns, invalid moves, captures, promotion, king counts, blocked players, restart, and board boundaries. GitHub Actions builds and tests on Linux and Windows; Linux also runs an automated desktop interaction test with memory checks. The browser workflow builds the same C engine to Wasm, tests desktop/touch interaction, and deploys to Pages only after its tests pass.
 
 See [development notes](docs/DEVELOPMENT.md) for architecture, graphical tests, and the changes from the original submission. The [original project notes](legacy/README.md) describe the preserved files.
 

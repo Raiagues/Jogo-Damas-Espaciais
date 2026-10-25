@@ -86,3 +86,40 @@ The Windows job does not automate the GUI. Audio output still needs a manual che
 5. Confirm a new game begins with blue and 12 pieces per player.
 
 Keep binaries, object files, editor state, desktop metadata, and local build folders out of commits. Keep the original source in `legacy/` unchanged when modifying the maintained game.
+
+
+## Browser edition and GitHub Pages
+
+The website uses `src/game.c` through the small `src/web.c` bridge. `web/app.js` renders the state and forwards moves to WebAssembly; it does not contain a second implementation of the rules. The engine uses only bounded C operations and compiles without libc or imported runtime services. The existing desktop build continues to use the same source.
+
+On Ubuntu/Debian, install the browser build tools:
+
+```sh
+sudo apt-get install clang lld python3
+```
+
+Then, with Node.js 20 or newer and npm installed:
+
+```sh
+python3 scripts/build_web.py
+npm ci
+npm run test:wasm
+npx playwright install chromium
+npm run test:web
+```
+
+For interactive local play:
+
+```sh
+python3 -m http.server 4173 --directory build-web
+```
+
+Open `http://localhost:4173`. Use an HTTP server instead of opening the HTML file directly, because the page fetches its Wasm module. The generated `build-web/` directory is ignored by Git. It contains the HTML/CSS/JS, compiled engine, original image/audio resources, and build metrics.
+
+Browser sound is off by default. Audio uses `preload="none"` and starts after a click on Sound; audio failure leaves the game playable. The website adapts the controls for touch, uses a confirmation dialog before discarding an active match, and provides keyboard navigation and text status.
+
+`.github/workflows/pages.yml` checks the original source hashes, builds the site, runs Wasm and browser tests, and uploads the static artifact. Only successful checks on `main` reach the Pages deployment job. Pull requests run the checks without deploying. The repository's Pages source is GitHub Actions.
+
+`PLAYWRIGHT_BASE_URL` can point the browser tests at the deployed site. When using a locally installed Chrome for QA, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path; CI uses Playwright's installed Chromium. These are testing options, not requirements for someone visiting the website.
+
+See [modernization history](MODERNIZATION.md) and [technical evidence](TECHNICAL_EVIDENCE.md) for provenance, compatibility scope, and the limits of the measurements.
