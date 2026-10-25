@@ -44,7 +44,10 @@ with tempfile.TemporaryDirectory() as temporary, tempfile.TemporaryFile(mode="w+
         windows = []
 
         def find_window():
-            result = subprocess.run(["xdotool", "search", "--pid", str(process.pid),
+            # Allegro can create hidden helper windows while initializing graphics.
+            # Match both the process and title, and wait for a mapped game window.
+            result = subprocess.run(["xdotool", "search", "--all", "--onlyvisible",
+                                     "--pid", str(process.pid),
                                      "--name", "Damas Espaciais"],
                                     capture_output=True, text=True)
             windows[:] = result.stdout.splitlines()
@@ -52,8 +55,8 @@ with tempfile.TemporaryDirectory() as temporary, tempfile.TemporaryFile(mode="w+
 
         wait_for(find_window, "game window")
         window = windows[0]
-        xdo("windowfocus", "--sync", window)
         title_contains("Menu")
+        xdo("windowfocus", "--sync", window)
         click(320, 440)
         title_contains("Rules")
         click(320, 590)
