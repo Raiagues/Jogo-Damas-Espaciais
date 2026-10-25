@@ -10,6 +10,8 @@ test('play, capture, pass, restart, keyboard, and mobile layout', async ({ page,
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('request', (request) => { if (request.url().includes('/sons/')) audioRequests.push(request.url()); });
   await page.goto('./');
+  await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('#play').click();
   await expect(page.locator('#turn')).toHaveText("Blue's turn");
   await expect(page.locator('.cell')).toHaveCount(64);
   await expect(page.locator('.cell img')).toHaveCount(24);
@@ -33,7 +35,7 @@ test('play, capture, pass, restart, keyboard, and mobile layout', async ({ page,
   await expect(page.locator('#pink-count')).toHaveText('11');
   await expect(cell(page, 42)).toHaveAttribute('data-piece', '1');
   await page.locator('#new-game').click();
-  await expect(page.locator('dialog')).toBeVisible();
+  await expect(page.locator('#restart-dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Keep playing' }).click();
   await expect(page.locator('#pink-count')).toHaveText('11');
   await page.locator('#new-game').click();
@@ -59,6 +61,8 @@ test('complete a match through the UI and replay', async ({ page, isMobile }) =>
   game.web_reset();
   let state = 7;
   await page.goto('./');
+  await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('#play').click();
   await expect(page.locator('#turn')).toHaveText("Blue's turn");
   for (let ply = 0; ply < 500 && !game.web_winner(); ++ply) {
     const moves = [], jumps = [];
@@ -92,13 +96,16 @@ test('complete a match through the UI and replay', async ({ page, isMobile }) =>
 test('show a useful error when the engine cannot load', async ({ page }) => {
   await page.route('**/game.wasm', (route) => route.fulfill({ status: 503, body: 'Unavailable' }));
   await page.goto('./');
-  await expect(page.locator('#turn')).toHaveText('The game could not load');
-  await expect(page.locator('#status')).toContainText('desktop download');
-  await expect(page.locator('#new-game')).toBeDisabled();
+  await expect(page.locator('#start-status')).toContainText('The game could not load');
+  await expect(page.locator('#reload')).toBeVisible();
+  await expect(page.locator('#play')).toBeDisabled();
+  await expect(page.locator('#game-screen')).toBeHidden();
 });
 
 test('sound loads only after opting in and can be turned off', async ({ page }) => {
   await page.goto('./');
+  await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('#play').click();
   await expect(page.locator('#turn')).toHaveText("Blue's turn");
   const loaded = page.waitForResponse((response) => response.url().endsWith('/sons/trilha_sonora_1.wav') && response.ok());
   await page.locator('#sound').click();
@@ -106,4 +113,51 @@ test('sound loads only after opting in and can be turned off', async ({ page }) 
   await expect(page.locator('#sound')).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#sound').click();
   await expect(page.locator('#sound')).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('start screen, rules, and menu preserve the current match', async ({ page, isMobile }) => {
+  await page.goto('./');
+  await expect(page.locator('#start-screen')).toBeVisible();
+  await expect(page.locator('#game-screen')).toBeHidden();
+  await page.locator('#start-rules').click();
+  await expect(page.locator('#rules-dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.locator('#rules-dialog')).toBeHidden();
+  await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('#play').click();
+  await expect(page.locator('#start-screen')).toBeHidden();
+  await activate(page, 17, isMobile);
+  await activate(page, 24, isMobile);
+  await page.locator('#game-rules').click();
+  await expect(page.locator('#rules-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#rules-dialog')).toBeHidden();
+  await page.locator('#menu').click();
+  await expect(page.locator('#game-screen')).toBeHidden();
+  await expect(page.locator('#play')).toHaveText('Continue');
+  await page.locator('#play').click();
+  await expect(page.locator('#turn')).toHaveText("Pink's turn");
+  await expect(cell(page, 24)).toHaveAttribute('data-piece', '1');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('Play stays disabled until the game engine is ready', async ({ page }) => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await page.route('**/game.wasm', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto('./', { waitUntil: 'domcontentloaded' });
+  try {
+    await expect(page.locator('#play')).toBeDisabled();
+    await expect(page.locator('#start-status')).toHaveText('Loading…');
+    await expect(page.locator('#game-screen')).toBeHidden();
+  } finally {
+    release();
+  }
+  await expect(page.locator('#play')).toBeEnabled();
+  await page.locator('#play').click();
+  await expect(page.locator('.cell')).toHaveCount(64);
+  await expect(page.locator('#turn')).toHaveText("Blue's turn");
 });

@@ -7,6 +7,7 @@ let engine;
 let selected = null;
 let moves = 0;
 let soundEnabled = false;
+let gameVisible = false;
 const cells = [];
 const background = new Audio('sons/trilha_sonora_1.wav');
 background.preload = 'none';
@@ -39,7 +40,7 @@ function render() {
   const winner = engine.web_winner();
   $('turn').textContent = winner ? `${playerName(winner)} wins!` : `${playerName(turn)}'s turn`;
   $('board-mode').textContent = winner ? 'MISSION COMPLETE' : 'LOCAL TWO-PLAYER';
-  $('new-game').textContent = winner ? 'Play again ↗' : 'Start a new game ↗';
+  $('new-game').textContent = winner ? 'Play again ↗' : 'New game';
   for (const player of [1, 2]) {
     const color = player === 1 ? 'blue' : 'pink';
     $(`${color}-count`).textContent = engine.web_count(player);
@@ -79,14 +80,14 @@ function reset() {
   effects.som_campeao.pause();
   effects.som_campeao.currentTime = 0;
   if (soundEnabled) background.play().catch(() => {});
-  announce('Blue launches first. Select a blue piece, then choose a highlighted destination.');
+  announce('Select a blue piece to start.');
   render();
 }
 
 function move(row, col) {
   if (!engine.web_move(...selected, row, col)) {
     playEffect('som_fail');
-    announce('That move is not available. Choose a highlighted square, or pass your turn.');
+    announce('Move not available. Choose a highlighted square or pass.');
     return;
   }
   selected = null;
@@ -95,7 +96,7 @@ function move(row, col) {
   if (winner) {
     background.pause();
     playEffect('som_campeao');
-    announce(`${playerName(winner)} wins. The other fleet has no pieces or legal moves left. Play again for a fresh board.`);
+    announce(`${playerName(winner)} wins. Play again?`);
   } else {
     playEffect('som_selecionar');
     announce(`${playerName(engine.web_turn())}, select your next piece.`);
@@ -114,10 +115,10 @@ function choose(index, rightClick = false) {
     }
     selected = [row, col];
     playEffect('som_selecionar');
-    announce('Piece selected. Choose a highlighted destination, or use Pass turn.');
+    announce('Choose a highlighted square or pass.');
     render();
   } else if (selected[0] === row && selected[1] === col && !rightClick) {
-    announce('This piece is selected. Choose a highlighted destination, or use Pass turn.');
+    announce('Choose a highlighted square or pass.');
   } else {
     move(row, col);
   }
@@ -159,6 +160,27 @@ function makeBoard() {
   }
 }
 
+$('play').addEventListener('click', () => {
+  if (!engine) return;
+  gameVisible = true;
+  $('start-screen').hidden = true;
+  $('game-screen').hidden = false;
+  if (soundEnabled && !engine.web_winner()) background.play().catch(() => {});
+  (cells.find((cell) => cell.tabIndex === 0) || cells[17]).focus();
+});
+$('menu').addEventListener('click', () => {
+  gameVisible = false;
+  background.pause();
+  for (const audio of Object.values(effects)) audio.pause();
+  $('game-screen').hidden = true;
+  $('start-screen').hidden = false;
+  $('play').textContent = 'Continue';
+  $('play').focus();
+});
+for (const id of ['start-rules', 'game-rules']) {
+  $(id).addEventListener('click', () => $('rules-dialog').showModal());
+}
+
 $('new-game').addEventListener('click', () => {
   if (moves && !engine.web_winner()) $('restart-dialog').showModal();
   else reset();
@@ -184,7 +206,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     background.pause();
     for (const audio of Object.values(effects)) audio.pause();
-  } else if (soundEnabled && engine && !engine.web_winner()) background.play().catch(() => {});
+  } else if (soundEnabled && engine && gameVisible && !engine.web_winner()) background.play().catch(() => {});
 });
 
 try {
@@ -194,10 +216,13 @@ try {
   engine = instance.exports;
   makeBoard();
   $('board').setAttribute('aria-busy', 'false');
-  $('new-game').disabled = $('sound').disabled = false;
+  $('play').disabled = $('new-game').disabled = $('sound').disabled = false;
+  $('start-status').textContent = '';
   reset();
 } catch (error) {
   $('turn').textContent = 'The game could not load';
-  announce('Please reload with an internet connection and a browser that supports WebAssembly. The desktop download is available through Source code.');
+  announce('Reload to try again.');
+  $('start-status').textContent = 'The game could not load. Reload to try again.';
+  $('reload').hidden = false;
   console.error(error);
 }
